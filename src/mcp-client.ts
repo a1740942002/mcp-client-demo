@@ -65,6 +65,29 @@ export class MCPClient {
     }
   }
 
+  async chatLoop() {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    })
+
+    try {
+      console.log('\nMCP Client Started!')
+      console.log("Type your queries or 'quit' to exit.")
+
+      while (true) {
+        const message = await rl.question('\nQuery: ')
+        if (message.toLowerCase() === 'quit') {
+          break
+        }
+        const response = await this.processQuery(message)
+        console.log('\n' + response)
+      }
+    } finally {
+      rl.close()
+    }
+  }
+
   async processQuery(query: string) {
     try {
       const messages: MessageParam[] = [
@@ -78,6 +101,7 @@ export class MCPClient {
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 1000,
         messages,
+        // This line prevents user asking unrelevant questions to LLM
         tools: this.tools
       })
 
@@ -127,29 +151,6 @@ export class MCPClient {
         console.error('Error processing query: ', String(error))
       }
       throw error
-    }
-  }
-
-  async chatLoop() {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    })
-
-    try {
-      console.log('\nMCP Client Started!')
-      console.log("Type your queries or 'quit' to exit.")
-
-      while (true) {
-        const message = await rl.question('\nQuery: ')
-        if (message.toLowerCase() === 'quit') {
-          break
-        }
-        const response = await this.processQuery(message)
-        console.log('\n' + response)
-      }
-    } finally {
-      rl.close()
     }
   }
 
