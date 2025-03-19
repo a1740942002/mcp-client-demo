@@ -66,59 +66,68 @@ export class MCPClient {
   }
 
   async processQuery(query: string) {
-    const messages: MessageParam[] = [
-      {
-        role: 'user',
-        content: query
-      }
-    ]
-
-    const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 1000,
-      messages,
-      tools: this.tools
-    })
-
-    const finalText = []
-    const toolResults = []
-
-    for (const content of response.content) {
-      if (content.type === 'text') {
-        finalText.push(content.text)
-      } else if (content.type === 'tool_use') {
-        const toolName = content.name
-        const toolArgs = content.input as { [x: string]: unknown } | undefined
-
-        const result = await this.mcp.callTool({
-          name: toolName,
-          arguments: toolArgs
-        })
-        toolResults.push(result)
-        finalText.push(
-          `[Calling tool ${toolName} with args ${JSON.stringify(toolArgs)}]`
-        )
-
-        messages.push({
+    try {
+      const messages: MessageParam[] = [
+        {
           role: 'user',
-          content: result.content as string
-        })
+          content: query
+        }
+      ]
 
-        const response = await this.anthropic.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 1000,
-          messages
-        })
+      const response = await this.anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1000,
+        messages,
+        tools: this.tools
+      })
 
-        finalText.push(
-          response?.content?.[0]?.type === 'text'
-            ? response.content[0].text
-            : ''
-        )
+      const finalText = []
+      const toolResults = []
+
+      for (const content of response.content) {
+        if (content.type === 'text') {
+          finalText.push(content.text)
+        } else if (content.type === 'tool_use') {
+          const toolName = content.name
+          const toolArgs = content.input as { [x: string]: unknown } | undefined
+
+          const result = await this.mcp.callTool({
+            name: toolName,
+            arguments: toolArgs
+          })
+          toolResults.push(result)
+          finalText.push(
+            `[Calling tool ${toolName} with args ${JSON.stringify(toolArgs)}]`
+          )
+
+          messages.push({
+            role: 'user',
+            content: result.content as string
+          })
+
+          const response = await this.anthropic.messages.create({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 1000,
+            messages
+          })
+
+          finalText.push(
+            response?.content?.[0]?.type === 'text'
+              ? response.content[0].text
+              : ''
+          )
+        }
       }
-    }
 
-    return finalText.join('\n')
+      return finalText.join('\n')
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error('Error processing query: ', error.message)
+      } else {
+        console.error('Error processing query: ', String(error))
+      }
+      throw error
+    }
   }
 
   async chatLoop() {
